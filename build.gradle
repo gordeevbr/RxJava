@@ -44,8 +44,67 @@ apply plugin: "com.github.hierynomus.license"
 apply plugin: "com.jfrog.bintray"
 apply plugin: "com.jfrog.artifactory"
 
-sourceCompatibility = JavaVersion.VERSION_1_6
-targetCompatibility = JavaVersion.VERSION_1_6
+// Java 9 source set declaration
+// ---------------------------------------
+
+sourceSets {
+    java9 {
+        java {
+            srcDirs = ['src/main/java9']
+        }
+    }
+}
+
+// ---------------------------------------
+
+// Source set compatibility declaration
+// ---------------------------------------
+
+compileJava {
+    sourceCompatibility = JavaVersion.VERSION_1_6
+    targetCompatibility = JavaVersion.VERSION_1_6
+}
+
+compileJava9Java {
+    sourceCompatibility = JavaVersion.VERSION_1_9
+    targetCompatibility = JavaVersion.VERSION_1_9
+}
+
+compileJmhJava {
+    sourceCompatibility = JavaVersion.VERSION_1_6
+    targetCompatibility = JavaVersion.VERSION_1_6
+}
+
+compileTestJava {
+    sourceCompatibility = JavaVersion.VERSION_1_6
+    targetCompatibility = JavaVersion.VERSION_1_6
+}
+
+jmhCompileGeneratedClasses {
+    sourceCompatibility = JavaVersion.VERSION_1_6
+    targetCompatibility = JavaVersion.VERSION_1_6
+}
+
+static String compact(String src) {
+    if (src.contains('.')) {
+        src.substring(src.lastIndexOf('.')+1)
+    } else {
+        src
+    }
+}
+
+if (JavaVersion.current().java9Compatible) {
+    project.afterEvaluate {
+        tasks.withType(JavaCompile) {
+            def version = compact(sourceCompatibility)
+            println "Configuring $name to use --release $version"
+            options.compilerArgs.addAll(['--release', version])
+        }
+    }
+}
+
+
+// ---------------------------------------
 
 // Dependency versions
 // ---------------------------------------
@@ -73,6 +132,9 @@ dependencies {
 
     testImplementation "org.reactivestreams:reactive-streams-tck:$reactiveStreamsVersion"
     testImplementation "org.testng:testng:$testNgVersion"
+
+    java9Implementation "org.reactivestreams:reactive-streams:$reactiveStreamsVersion"
+    java9Implementation files(sourceSets.main.output.classesDirs) { builtBy compileJava }
 }
 
 javadoc {
@@ -107,9 +169,34 @@ task sourcesJar(type: Jar, dependsOn: classes) {
     from sourceSets.main.allSource
 }
 
+task sourcesMrJar(type: Jar, dependsOn: classes) {
+    classifier = "sources"
+    from sourceSets.main.allSource
+    into('META-INF/versions/9') {
+        from sourceSets.java9.allSource
+    }
+}
+
 task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = "javadoc"
     from javadoc.destinationDir
+}
+
+task javadocJava9(type: Javadoc, dependsOn: classes) {
+    source += sourceSets.java9.allJava
+    classpath += sourceSets.java9.compileClasspath
+}
+
+task javadocMrJar(type: Jar, dependsOn: javadocJava9) {
+    classifier = "javadoc"
+    from javadoc.destinationDir
+}
+
+task mrJar(type: Jar, dependsOn: classes) {
+    from sourceSets.main.output
+    into('META-INF/versions/9') {
+        from sourceSets.java9.output
+    }
 }
 
 artifacts {
@@ -126,6 +213,7 @@ jar {
         instruction "Import-Package", "!org.junit,!junit.framework,!org.mockito.*,!org.testng.*,*"
         instruction "Eclipse-ExtensibleAPI", "true"
         instruction "Automatic-Module-Name", "io.reactivex.rxjava2"
+        instruction "Multi-Release", "true"
     }
 }
 
