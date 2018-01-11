@@ -192,10 +192,24 @@ task javadocMrJar(type: Jar, dependsOn: javadocJava9) {
     from javadoc.destinationDir
 }
 
-task mrJar(type: Jar, dependsOn: classes) {
+task mrJar(type: Jar, dependsOn: osgiClasses) {
     from sourceSets.main.output
     into('META-INF/versions/9') {
         from sourceSets.java9.output
+    }
+    manifest {
+        attributes(
+                "Manifest-Version": "1.0",
+                "Bundle-ManifestVersion": "2",
+                "Bundle-DocURL": "https://github.com/ReactiveX/RxJava",
+                "Bundle-Vendor": "RxJava Contributors",
+                "Bundle-Name": "rxjava",
+                "Eclipse-ExtensibleAPI": "true",
+                "Bundle-Version": "2.2.0.SNAPSHOT",
+                "Automatic-Module-Name": "io.reactivex.rxjava2",
+                "Bundle-SymbolicName": "io.reactivex.rxjava2.rxjava",
+                "Multi-Release": "true"
+        )
     }
 }
 
@@ -213,7 +227,6 @@ jar {
         instruction "Import-Package", "!org.junit,!junit.framework,!org.mockito.*,!org.testng.*,*"
         instruction "Eclipse-ExtensibleAPI", "true"
         instruction "Automatic-Module-Name", "io.reactivex.rxjava2"
-        instruction "Multi-Release", "true"
     }
 }
 
